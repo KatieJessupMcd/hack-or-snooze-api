@@ -5,6 +5,15 @@ class StoryList {
     this.stories = stories;
   }
 
+  // method to get all stories from the stories API on hack-or-snooze
+  // API getJSON request asks for all stories from stories endpoint
+  // stories const stores map function invoked on response.stories array
+  // to assign story data to dynamically created story objs (ES6), which are
+  // returned with a new instance of the Story method
+  // storyList const for new instance of StoryList class with stories as parameter
+  // cb takes storyList const as a parameter
+  // callback (method param) only runs once a response has been received from API
+  // (i.e. after the success fn has returned).
   static getStories(cb) {
     $.getJSON(`${BASE_URL}/stories`, function(response) {
       const stories = response.stories.map(function(story) {
@@ -16,14 +25,51 @@ class StoryList {
     });
   }
 
-  addStory(userLoggedIn, newStoryData, callback) {
-    let obj = {
-      token: userLoggedIn.loginToken,
-      story: newStoryData
-    };
+  addStory(userLoggedIn, data, callback) {
+    $.ajax({
+      url: `${BASE_URL}/stories`,
+      method: 'POST',
+      data: {
+        token: userLoggedIn.loginToken,
+        story: {
+          title: data.title,
+          author: data.author,
+          url: data.url
+        }
+      },
+      success: response => {
+        // push new story to stories array
+        const { author, title, url, username, storyId } = response.story;
+        const newStory = new Story(author, title, url, username, storyId);
+        this.stories.push(newStory);
+        // push new story to user ownStories array
+        userLoggedIn.retrieveDetails(() => callback(newStory));
+      }
+    });
+  }
 
-    $.post(`${BASE_URL}/stories`, obj, function() {
-      userLoggedIn.retrieveDetails(callback);
+  removeStory(user, storyId, cb) {
+    $.ajax({
+      url: `${BASE_URL}/stories/${storyId}`,
+      method: 'DELETE',
+      data: {
+        token: user.loginToken
+      },
+      success: () => {
+        // Update this.stories list to reflect response from API
+        const storyIndex = this.stories.findIndex(
+          story => story.storyId === storyId
+        );
+        this.stories.splice(storyIndex, 1);
+
+        // Use retrieveData to update ownStories for user instance
+        let ownStoriesIndex = user.ownStories.findIndex(
+          story => story.storyId === storyId
+        );
+        this.user.ownStories.storyId.splice(ownStoriesIndex, 1);
+
+        return cb(this);
+      }
     });
   }
 } //  end of StoryList class
@@ -46,16 +92,20 @@ class User {
   static create(username, password, name, probablyDoingDOMStuffInFuture) {
     let obj = { user: { name, username, password } };
     $.post(`${BASE_URL}/signup`, obj, function(response) {
-      //  creates a new User class withe the response from the api post and saves it
+      //  creates a new User class with the response from the api post and saves it
       //  in a newUser variable
       let newUser = new User(response.user);
-      //  takes what is saved in the newUser variable and does dom stuff with it (ie dipslay
+      //  takes what is saved in the newUser variable and does dom stuff with it (ie display
       //  on page, locally store)
       newUser.loginToken = response.token; //  whether signed in or logged in, instance will have token
       probablyDoingDOMStuffInFuture(newUser);
     });
   }
 
+  // login creates a post request for a user login
+  // User login accepts login as endpoint, creates obj with this instance of u/n and p/w
+  // success function sets value of current this loginToken to the response.token
+  // callback(this) is a placeholder to access particular user data later
   login(callback) {
     let obj = { user: { username: this.username, password: this.password } };
     $.post(`${BASE_URL}/login`, obj, function(response) {
@@ -64,6 +114,11 @@ class User {
     });
   }
 
+  // get request asks specific user endpoint for user detail, provides token in query string
+  // username and token provided dynamically with string literal
+  // success fn pushes response data into matching keys in this User instance
+  // note: not necessary to use push method. Simple assignment will do
+  // callback is placeholder for response data from this instance
   retrieveDetails(callback) {
     $.get(
       `${BASE_URL}/users/${this.username}?token=${this.loginToken}`,
@@ -73,6 +128,36 @@ class User {
         callback(this);
       }
     );
+  }
+
+  addFavorite(storyId, callback) {
+    $.ajax({
+      url: `${BASE_URL}/users/${this.username}/favorites/${storyId}`,
+      method: 'POST',
+      data: {
+        token: this.loginToken
+      },
+      success: response => {
+        this.retrieveDetails(() => {
+          callback(response.story);
+        });
+      }
+    });
+  }
+
+  removeFavorite(storyId, callback) {
+    $.ajax({
+      url: `${BASE_URL}/users/${this.username}/favorites/${storyId}`,
+      method: 'DELETE',
+      data: {
+        token: this.loginToken
+      },
+      success: response => {
+        this.retrieveDetails(() => {
+          callback(response.story);
+        });
+      }
+    });
   }
 } //  end of User class
 
