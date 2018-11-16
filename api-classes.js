@@ -116,11 +116,20 @@ class User {
   // callback(this) is a placeholder to access particular user data later
   login(callback) {
     let obj = { user: { username: this.username, password: this.password } };
-    $.post(`${BASE_URL}/login`, obj, function(response) {
+    $.post(`${BASE_URL}/login`, obj, response => {
       this.loginToken = response.token;
-      callback(response.user); //  response.user  //  "this" and obj, is the current instance of User
+      callback(this); //  response.user  //  "this" and obj, is the current instance of User
     });
   }
+
+  /*
+{
+  "user": {
+    "username": "test",
+    "password": "password"
+  }
+}
+  */
 
   // get request asks specific user endpoint for user detail, provides token in query string
   // username and token provided dynamically with string literal
@@ -128,15 +137,52 @@ class User {
   // note: not necessary to use push method. Simple assignment will do
   // callback is placeholder for response data from this instance
   retrieveDetails(callback) {
-    $.get(
-      `${BASE_URL}/users/${this.username}?token=${this.loginToken}`,
-      response => {
-        this.favorites.push(response.user.favorites);
-        this.ownStories.push(response.user.stories);
-        callback(this);
+    $.ajax({
+      url: `${BASE_URL}/users/${this.username}`,
+      data: { token: this.loginToken },
+      success: response => {
+        this.name = response.user.name;
+        this.favorites = response.user.favorites;
+        this.ownStories = response.user.stories.map(
+          story =>
+            new Story(
+              story.author,
+              story.title,
+              story.url,
+              story.userName,
+              story.storyId
+            )
+        );
+        this.createdAt = response.user.createdAt;
+        this.updatedAt = response.user.updatedAt;
+        return callback(this);
       }
-    );
+    });
+  } //  end of retrieveDetails instance method
+
+  // Example retrieveDetails API method
+  /*
+  retrieveDetails(cb) {
+    $.ajax({
+      url: `${BASE_URL}/users/${this.username}`,
+      data: { token: this.loginToken },
+      success: response => {
+        this.name = response.user.name;
+        this.favorites = response.user.favorites;
+        this.ownStories = response.user.stories.map(story => new Story(
+          story.author,
+          story.title,
+          story.url,
+          story.username,
+          story.storyId
+        ));
+        this.createdAt = response.user.createdAt;
+        this.updatedAt = response.user.updatedAt;
+        return cb(this);
+      }
+    });
   }
+  */
 
   addFavorite(storyId, callback) {
     $.ajax({
