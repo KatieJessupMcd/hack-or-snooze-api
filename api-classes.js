@@ -89,16 +89,24 @@ class User {
     this.ownStories = [];
   }
 
-  static create(username, password, name, probablyDoingDOMStuffInFuture) {
-    let obj = { user: { name, username, password } };
+  static create(username, password, name, cb) {
+    let obj = { user: { username, password, name } };
+    console.log(obj);
     $.post(`${BASE_URL}/signup`, obj, function(response) {
       //  creates a new User class with the response from the api post and saves it
       //  in a newUser variable
-      let newUser = new User(response.user);
+      let newUser = new User(
+        response.user.username,
+        password,
+        response.user.name,
+        response.user.token,
+        response.user.favorites,
+        response.user.ownStories
+      );
       //  takes what is saved in the newUser variable and does dom stuff with it (ie display
       //  on page, locally store)
       newUser.loginToken = response.token; //  whether signed in or logged in, instance will have token
-      probablyDoingDOMStuffInFuture(newUser);
+      cb(newUser);
     });
   }
 
@@ -110,7 +118,7 @@ class User {
     let obj = { user: { username: this.username, password: this.password } };
     $.post(`${BASE_URL}/login`, obj, function(response) {
       this.loginToken = response.token;
-      callback(this); //  response.user  //  "this" and obj, is the current instance of User
+      callback(response.user); //  response.user  //  "this" and obj, is the current instance of User
     });
   }
 
@@ -122,9 +130,9 @@ class User {
   retrieveDetails(callback) {
     $.get(
       `${BASE_URL}/users/${this.username}?token=${this.loginToken}`,
-      function(response) {
-        this.favorites = this.favorites.push(response.user.favorites);
-        this.ownStories = this.ownStories.push(response.user.stories);
+      response => {
+        this.favorites.push(response.user.favorites);
+        this.ownStories.push(response.user.stories);
         callback(this);
       }
     );
