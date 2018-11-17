@@ -132,6 +132,7 @@ form > hr {
 }
 
 .articles-list > li {
+  display: block;
   color: gray;
   font-size: 0.8rem;
   margin: 10px 0;

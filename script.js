@@ -31,7 +31,7 @@ $(function() {
     console.log(storyList);
   });
 
-  //  when you get to the page, at least 10 stories displayed
+  //  TOGGLE FAVORITES STAR ON/OFF
   $('#all-articles-list').on('click', '.fa-star', function(e) {
     // how do you know which method to use? -- addFavorite vs. removeFavorite??
     console.log(e.target);
@@ -47,13 +47,20 @@ $(function() {
         $(e.target).addClass('far');
       });
     }
-    //  $(e.target).hasClass("banana") <-- return true or false
-    // does the event target have far as a class? if not, add it as fav
-
-    //  make an ajax request to add or remove fav - use the story id from the story span
   });
-  //  As a user, I can click on the link in the
-  //  navbar to open sign up /log in - unhide form section class - account-form
+
+  // SHOW/HIDE FAVORITES LIST
+  // $('#nav-favorites').on('click', 'ol-storiesList', function(){
+    // event delegation for parent of all stories li's
+    // In css, default display for far to display:block;
+    // If far is currently display:block >>
+      // clicking on favorites id should add display: none / remove display:block
+    // else
+    // if()
+
+  // })  
+
+  // UNHIDE SIGNUP/LOGIN FORMS  
   $('#nav-login').on('click', function() {
     //  remove class of hidden from the login/signup forms
     $('.account-form').removeClass('hidden');
@@ -71,6 +78,58 @@ $(function() {
       showNavForLoggedInUser();
     });
   });
+
+  $('#login').on('click', function(e) {
+    e.preventDefault(); // anytime you have a form & not reload page on click
+    let currentUserName = $('#login-username').val();
+    let currentPassword = $('#login-password').val();
+
+    currentUser = new User(currentUserName, currentPassword);
+    currentUser.login(function loginAndSubmitForm(updatedUser) {
+      currentUser = updatedUser;
+      currentUser.retrieveDetails(() => {
+        token = currentUser.loginToken;
+        $('#login-form').hide();
+        $('#create-account-form').hide();
+        showNavForLoggedInUser();
+        localStorage.setItem('token', currentUser.loginToken);
+        localStorage.setItem('username', currentUser.username);
+      });
+    });
+  });
+
+
+
+  $('#nav-submit').on('click', function() {
+    $('#submit-form').removeClass('hidden');
+  });
+
+  $('#newStory').on('click', function(e) {
+    //e.preventDefault(); // anytime you have a form & not reload page on click
+    let author = $('#author').val();
+    let title = $('#title').val();
+    let url = $('#url').val();
+    stories.addStory(currentUser, { title, author, url }, function(newStory) {
+      console.log(newStory);
+    });
+  });
+}); //  end of window
+
+//  business logic-y - still in global scope
+function showNavForLoggedInUser() {
+  $('#nav-login').hide();
+  $('#user-profile').hide();
+  $('.main-nav-links, #user-profile').toggleClass('hidden');
+  $('#nav-welcome').show();
+  $('#nav-logout').show();
+}
+
+let newPassword = $('#create-account-password').val();
+  User.create(newUserName, newPassword, newAccountName, function(newUser) {
+    currentUser = newUser;
+    showNavForLoggedInUser();
+  })
+});
 
   $('#login').on('click', function(e) {
     e.preventDefault(); // anytime you have a form & not reload page on click
